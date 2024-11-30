@@ -10,7 +10,9 @@ type SensorData = {
   windSpeed: string;
   rainfall: string;
   radiation: string;
-  airTemperature: string;
+  soilTemperature: string;
+  dhtTemperature: string;
+  dhtHumidity: string;
 };
 
 type ForecastData = {
@@ -31,10 +33,11 @@ export default function WeatherForecast() {
     windSpeed: "Loading...",
     rainfall: "Loading...",
     radiation: "Loading...",
-    airTemperature: "Loading...",
+    soilTemperature: "Loading...",
+    dhtTemperature: "Loading...",
+    dhtHumidity: "Loading...",
   });
 
-  // Function to load sensor data
   const loadSensorData = (sensorId: string, key: keyof SensorData) => {
     const sensorRef = ref(database, `sensor/${sensorId}`);
     onValue(sensorRef, (snapshot) => {
@@ -43,7 +46,6 @@ export default function WeatherForecast() {
     });
   };
 
-  // Function to load forecast data
   async function loadForecastData() {
     try {
       const docRef = doc(firestore, "forecasts", "weather_forecast");
@@ -76,18 +78,31 @@ export default function WeatherForecast() {
     loadSensorData("kecepatan_angin", "windSpeed");
     loadSensorData("curah_hujan", "rainfall");
     loadSensorData("radiasi", "radiation");
-    loadSensorData("suhu", "airTemperature");
+    loadSensorData("suhu", "soilTemperature");
+    loadSensorData("dht_temperature", "dhtTemperature");
+    loadSensorData("dht_humidity", "dhtHumidity");
 
     loadForecastData();
   }, []);
 
+  // Pilih gambar berdasarkan kondisi cuaca
+  const getWeatherImage = (condition: string) => {
+    if (condition.toLowerCase().includes("hujan")) {
+      return "/assets/weather/rain.png";
+    } else if (condition.toLowerCase().includes("mendung")) {
+      return "/assets/weather/cloud.png";
+    } else if (condition.toLowerCase().includes("cerah")) {
+      return "/assets/weather/sunny.png";
+    }
+    return "/assets/weather/default.png"; // Default image if no match
+  };
+
   return (
     <div className="bg-gray-100 min-h-screen justify-center items-center p-6">
-      {/* Live Camera */}
-      <div className="mb-6 justify-center items-center">
-        <h5 className="text-xl justify-center items-center text-black font-bold mb-4">
-          Live Camera
-        </h5>
+      <h5 className="text-xl text-black font-bold mb-4 text-center">
+        Live Camera
+      </h5>
+      <div className="mb-6 flex justify-center items-center">
         <iframe
           src="http://192.168.171.79/"
           className="camera-iframe"
@@ -102,21 +117,31 @@ export default function WeatherForecast() {
         />
       </div>
 
-      {/* Sensor Cards */}
       <h5 className="text-xl text-black font-bold mb-4">Monitoring Sensor</h5>
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-        {Object.entries(sensorData).map(([key, value]) => (
-          <div
-            key={key}
-            className="bg-blue-500 p-4 rounded-lg shadow-lg text-center text-white"
-          >
-            <p className="text-lg">{key.replace(/([A-Z])/g, " $1")}</p>
-            <h5 className="text-3xl font-bold">{value}</h5>
-          </div>
-        ))}
+        {Object.entries(sensorData).map(([key, value], index) => {
+          const colors = [
+            "bg-blue-500",
+            "bg-green-500",
+            "bg-red-500",
+            "bg-yellow-500",
+            "bg-purple-500",
+            "bg-teal-500",
+            "bg-orange-500",
+          ];
+          const color = colors[index % colors.length];
+          return (
+            <div
+              key={key}
+              className={`${color} p-4 rounded-lg shadow-lg text-center text-white`}
+            >
+              <p className="text-lg">{key.replace(/([A-Z])/g, " $1")}</p>
+              <h5 className="text-3xl font-bold">{value}</h5>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Weather Forecast */}
       <div className="bg-sky-300 p-6 rounded-lg shadow-lg w-full max-w-sm mx-auto">
         <div className="flex justify-between items-center mb-4">
           <div>
@@ -125,12 +150,12 @@ export default function WeatherForecast() {
               {forecast?.today || "Loading..."}
             </p>
             <p className="text-4xl font-bold text-yellow-500">
-              {sensorData.airTemperature}
+              {sensorData.dhtTemperature}
             </p>
           </div>
           <img
-            src="https://www.iconfinder.com/data/icons/weather-429/64/weather_icons_color-03-512.png"
-            alt="Sunny"
+            src={getWeatherImage(forecast?.today || "default")}
+            alt="Weather"
             className="w-20 h-20"
           />
         </div>
