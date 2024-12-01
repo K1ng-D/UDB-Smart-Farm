@@ -1,8 +1,10 @@
+// firebaseConfig.ts
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getDatabase } from "firebase/database";
 
-const firebaseConfig = {
+// Firebase config object
+export const firebaseConfig = {
   apiKey: "AIzaSyAPx1UbDSlLAuXeWqrxCHt9ANjbWgOzr48",
   authDomain: "databasesensorptpv.firebaseapp.com",
   databaseURL:
@@ -13,6 +15,7 @@ const firebaseConfig = {
   appId: "1:123456789:web:abcde123456",
 };
 
+// Firebase initialization
 const app = initializeApp(firebaseConfig);
 export const firestore = getFirestore(app);
 export const database = getDatabase(app);

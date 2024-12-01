@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
 import { ref, onValue } from "firebase/database";
-import { firestore, database } from "../lib/firebaseConfig";
+import { database } from "../lib/firebaseConfig";
 
 type SensorData = {
   soilMoisture: string;
@@ -16,17 +15,16 @@ type SensorData = {
 };
 
 type ForecastData = {
-  today: string;
-  day_1: string;
-  day_2: string;
-  day_3: string;
-  day_4: string;
-  day_5: string;
-  day_6: string;
+  today: { temperature: string; radiation: string };
+  day_1: { temperature: string; radiation: string };
+  day_2: { temperature: string; radiation: string };
+  day_3: { temperature: string; radiation: string };
+  day_4: { temperature: string; radiation: string };
+  day_5: { temperature: string; radiation: string };
+  day_6: { temperature: string; radiation: string };
 };
 
 export default function WeatherForecast() {
-  const [forecast, setForecast] = useState<ForecastData | null>(null);
   const [sensorData, setSensorData] = useState<SensorData>({
     soilMoisture: "Loading...",
     soilPH: "Loading...",
@@ -38,6 +36,16 @@ export default function WeatherForecast() {
     dhtHumidity: "Loading...",
   });
 
+  const [forecast, setForecast] = useState<ForecastData>({
+    today: { temperature: "Loading...", radiation: "Loading..." },
+    day_1: { temperature: "Loading...", radiation: "Loading..." },
+    day_2: { temperature: "Loading...", radiation: "Loading..." },
+    day_3: { temperature: "Loading...", radiation: "Loading..." },
+    day_4: { temperature: "Loading...", radiation: "Loading..." },
+    day_5: { temperature: "Loading...", radiation: "Loading..." },
+    day_6: { temperature: "Loading...", radiation: "Loading..." },
+  });
+
   const loadSensorData = (sensorId: string, key: keyof SensorData) => {
     const sensorRef = ref(database, `sensor/${sensorId}`);
     onValue(sensorRef, (snapshot) => {
@@ -46,31 +54,43 @@ export default function WeatherForecast() {
     });
   };
 
-  async function loadForecastData() {
-    try {
-      const docRef = doc(firestore, "forecasts", "weather_forecast");
-      const docSnap = await getDoc(docRef);
+  const generateForecast = (
+    todayTemperature: string,
+    todayRadiation: string
+  ) => {
+    const temperature = parseFloat(todayTemperature);
+    const radiation = parseFloat(todayRadiation);
 
-      if (docSnap.exists()) {
-        const data = docSnap.data() as Partial<ForecastData>;
-        setForecast({
-          today: data.today || "N/A",
-          day_1: data.day_1 || "N/A",
-          day_2: data.day_2 || "N/A",
-          day_3: data.day_3 || "N/A",
-          day_4: data.day_4 || "N/A",
-          day_5: data.day_5 || "N/A",
-          day_6: data.day_6 || "N/A",
-        });
-      } else {
-        console.error("No such document!");
-        setForecast(null);
-      }
-    } catch (error) {
-      console.error("Error fetching document:", error);
-      setForecast(null);
-    }
-  }
+    const prediction = {
+      today: { temperature: todayTemperature, radiation: todayRadiation },
+      day_1: {
+        temperature: (temperature + 1).toFixed(1),
+        radiation: (radiation + 0.5).toFixed(1),
+      },
+      day_2: {
+        temperature: (temperature + 2).toFixed(1),
+        radiation: (radiation + 1).toFixed(1),
+      },
+      day_3: {
+        temperature: (temperature + 3).toFixed(1),
+        radiation: (radiation + 1.5).toFixed(1),
+      },
+      day_4: {
+        temperature: (temperature + 4).toFixed(1),
+        radiation: (radiation + 2).toFixed(1),
+      },
+      day_5: {
+        temperature: (temperature + 5).toFixed(1),
+        radiation: (radiation + 2.5).toFixed(1),
+      },
+      day_6: {
+        temperature: (temperature + 6).toFixed(1),
+        radiation: (radiation + 3).toFixed(1),
+      },
+    };
+
+    setForecast(prediction);
+  };
 
   useEffect(() => {
     loadSensorData("kelembaban_tanah", "soilMoisture");
@@ -81,99 +101,147 @@ export default function WeatherForecast() {
     loadSensorData("suhu", "soilTemperature");
     loadSensorData("dht_temperature", "dhtTemperature");
     loadSensorData("dht_humidity", "dhtHumidity");
-
-    loadForecastData();
   }, []);
 
-  // Pilih gambar berdasarkan kondisi cuaca
-  const getWeatherImage = (condition: string) => {
-    if (condition.toLowerCase().includes("hujan")) {
-      return "/assets/weather/rain.png";
-    } else if (condition.toLowerCase().includes("mendung")) {
-      return "/assets/weather/cloud.png";
-    } else if (condition.toLowerCase().includes("cerah")) {
-      return "/assets/weather/sunny.png";
+  useEffect(() => {
+    if (
+      sensorData.dhtTemperature !== "Loading..." &&
+      sensorData.radiation !== "Loading..."
+    ) {
+      generateForecast(sensorData.dhtTemperature, sensorData.radiation);
     }
-    return "/assets/weather/default.png"; // Default image if no match
+  }, [sensorData.dhtTemperature, sensorData.radiation]);
+
+  const cardColors = [
+    "bg-blue-100",
+    "bg-green-100",
+    "bg-yellow-100",
+    "bg-red-100",
+    "bg-purple-100",
+    "bg-teal-100",
+    "bg-indigo-100",
+    "bg-pink-100",
+  ];
+
+  const getWeatherCondition = (temperature: string, radiation: string) => {
+    const temp = parseFloat(temperature);
+    const rad = parseFloat(radiation);
+
+    if (temp >= 25 && temp <= 35 && rad > 700) {
+      return "clear";
+    } else if (temp >= 20 && temp <= 25 && rad > 200 && rad <= 700) {
+      return "cloudy";
+    } else if (temp >= 18 && temp <= 24 && rad < 200) {
+      return "rainy";
+    } else {
+      return "normal";
+    }
+  };
+
+  const getWeatherImage = (condition: string) => {
+    switch (condition) {
+      case "clear":
+        return "/assets/weather/sunny.png";
+      case "cloudy":
+        return "/assets/weather/cloudy.png";
+      case "rainy":
+        return "/assets/weather/rainy.png";
+      default:
+        return "/assets/weather/normal.png";
+    }
+  };
+
+  const getForecastWeatherImage = (temperature: string, radiation: string) => {
+    const condition = getWeatherCondition(temperature, radiation);
+    return getWeatherImage(condition);
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen justify-center items-center p-6">
-      <h5 className="text-xl text-black font-bold mb-4 text-center">
+    <div className="bg-gray-50 min-h-screen p-6">
+      <h1 className="text-2xl text-blue-600 font-bold mb-6 text-center">
+        Weather Monitoring Dashboard UDB Smart Farm
+      </h1>
+      <h2 className="text-lg text-center text-gray-700 font-semibold mb-2">
         Live Camera
-      </h5>
-      <div className="mb-6 flex justify-center items-center">
+      </h2>
+      {/* Live Camera Section */}
+      <div className="mb-6 justify-center items-center flex">
         <iframe
           src="http://192.168.171.79/"
-          className="camera-iframe"
-          style={{
-            width: "100%",
-            maxWidth: "650px",
-            height: "400px",
-            border: "3px solid blue",
-            borderRadius: "10px",
-            boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.3)",
-          }}
-        />
+          className="w-full max-w-2xl h-80 border-4 border-blue-300 rounded-lg shadow-lg"
+          title="Live Camera"
+        ></iframe>
       </div>
 
-      <h5 className="text-xl text-black font-bold mb-4">Monitoring Sensor</h5>
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-        {Object.entries(sensorData).map(([key, value], index) => {
-          const colors = [
-            "bg-blue-500",
-            "bg-green-500",
-            "bg-red-500",
-            "bg-yellow-500",
-            "bg-purple-500",
-            "bg-teal-500",
-            "bg-orange-500",
-          ];
-          const color = colors[index % colors.length];
-          return (
+      {/* Monitoring Sensor Section */}
+      <div className="mb-8">
+        <h2 className="text-lg text-gray-700 font-semibold mb-4">
+          Monitoring Sensor
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {Object.entries(sensorData).map(([key, value], index) => (
             <div
               key={key}
-              className={`${color} p-4 rounded-lg shadow-lg text-center text-white`}
+              className={`p-4 rounded-lg shadow-md ${
+                cardColors[index % cardColors.length]
+              }`}
             >
-              <p className="text-lg">{key.replace(/([A-Z])/g, " $1")}</p>
-              <h5 className="text-3xl font-bold">{value}</h5>
+              <p className="font-medium text-gray-700">
+                {key.replace(/([A-Z])/g, " $1")}
+              </p>
+              <h3 className="text-xl font-bold text-gray-800">{value}</h3>
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
-      <div className="bg-sky-300 p-6 rounded-lg shadow-lg w-full max-w-sm mx-auto">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h2 className="text-2xl font-bold">Cuaca Terkini</h2>
-            <p className="text-lg text-gray-600">
-              {forecast?.today || "Loading..."}
-            </p>
-            <p className="text-4xl font-bold text-yellow-500">
-              {sensorData.dhtTemperature}
-            </p>
-          </div>
+      {/* Weather Forecast Section */}
+      <div>
+        <h2 className="text-lg text-gray-700 font-semibold mb-4">
+          Weather Forecast
+        </h2>
+        <div className="flex items-center space-x-4 mb-4">
+          <p className="text-gray-600">Today:</p>
+          <span className="text-lg font-bold text-blue-600">
+            {forecast.today.temperature || "Loading..."}°C,{" "}
+            {forecast.today.radiation || "Loading..."} W/m²
+          </span>
           <img
-            src={getWeatherImage(forecast?.today || "default")}
-            alt="Weather"
-            className="w-20 h-20"
+            src={getForecastWeatherImage(
+              forecast.today.temperature,
+              forecast.today.radiation
+            )}
+            alt="Today Weather"
+            className="w-2 h-2"
           />
         </div>
-        <h3 className="text-lg font-semibold mb-2">6 Hari Kedepan</h3>
-        <ul className="space-y-3">
-          {forecast
-            ? Object.entries(forecast)
-                .filter(([key]) => key !== "today")
-                .map(([key, value]) => (
-                  <li key={key} className="flex justify-between items-center">
-                    <span className="font-semibold">
-                      {key.replace(/_/g, " ")}
-                    </span>
-                    <span>{value}</span>
-                  </li>
-                ))
-            : "Loading..."}
-        </ul>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {Object.entries(forecast).map(([key, value], index) => {
+            if (key === "today") return null; // Skip the today forecast as it is already handled
+            return (
+              <div
+                key={key}
+                className="p-4 rounded-lg shadow bg-white border-l-4 border-blue-300"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="text-gray-600">{key.replace("_", " ")}</span>
+                  <img
+                    src={getForecastWeatherImage(
+                      value.temperature,
+                      value.radiation
+                    )}
+                    alt={`Forecast ${key}`}
+                    className="w-8 h-8"
+                  />
+                </div>
+                <p className="text-lg font-bold text-gray-700">
+                  {value.temperature}°C, {value.radiation} W/m²
+                </p>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
