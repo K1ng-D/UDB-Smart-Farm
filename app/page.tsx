@@ -212,7 +212,7 @@ export default function WeatherForecast() {
               forecast.today.radiation
             )}
             alt="Today Weather"
-            className="w-2 h-2"
+            className="w-10 h-10"
           />
         </div>
 
@@ -232,7 +232,7 @@ export default function WeatherForecast() {
                       value.radiation
                     )}
                     alt={`Forecast ${key}`}
-                    className="w-8 h-8"
+                    className="w-10 h-10"
                   />
                 </div>
                 <p className="text-lg font-bold text-gray-700">
