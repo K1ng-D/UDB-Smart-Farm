@@ -178,7 +178,7 @@ export default function WeatherForecast() {
         <h2 className="text-lg text-gray-700 font-semibold mb-4">
           Monitoring Sensor
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {Object.entries(sensorData).map(([key, value], index) => (
             <div
               key={key}
@@ -218,7 +218,7 @@ export default function WeatherForecast() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {Object.entries(forecast).map(([key, value], index) => {
-            if (key === "today") return null; // Skip the today forecast as it is already handled
+            if (key === "today") return null;
             return (
               <div
                 key={key}
